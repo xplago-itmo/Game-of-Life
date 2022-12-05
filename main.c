@@ -175,10 +175,14 @@ int main(int argc, char *argv[]) {
     unsigned int width = (unsigned int) bmp.bitmapinfo.biWidth;
 
     struct PIXEL * pixels = bmp.pixelsdata.data;
-    struct PIXEL black = pixel(255, 0, 0);
+    struct PIXEL * start_pixels = bmp.pixelsdata.data;
+    struct PIXEL black = pixel(0, 0, 0);
     struct PIXEL white = pixel(255, 255, 255);
 
     fclose(fopen(output_filename, "w"));
+
+    int stable_flag = 1;
+    int empty_flag = 1;
 
     for (unsigned int time = 0; time < max_iter; time++) {
 
@@ -186,6 +190,8 @@ int main(int argc, char *argv[]) {
         printf("time: %d ", time);
 
         struct PIXEL * new_pixels = (struct PIXEL *) calloc(width * height, 24);
+        stable_flag = 1;
+        empty_flag = 1;
 
         for (unsigned int i = 0; i < height; i++) {
             for (unsigned int j = 0; j < width; j++) {
@@ -205,12 +211,14 @@ int main(int argc, char *argv[]) {
                 if (eq_pixel(pixels[index], black) == 1) {
                     if (count == 2 || count == 3) {
                         new_pixels[index] = black;
+                        empty_flag = 0;
                     } else {
                         new_pixels[index] = white;
                     }
                 } else if (eq_pixel(pixels[index], white) == 1) {
                     if (count == 3) {
                         new_pixels[index] = black;
+                        empty_flag = 0;
                     } else {
                         new_pixels[index] = white;
                     }
@@ -218,16 +226,30 @@ int main(int argc, char *argv[]) {
                     struct PIXEL p = pixels[index];
                     fprintf(stderr, "Error: Unsupported color {r: %d, g: %d, b: %d}\n", p.r, p.g, p.b);
                 }
+
+                if (eq_pixel(pixels[index], new_pixels[index]) == 0) {
+                    stable_flag = 0;
+                }
             }
         }
 
-        free(bmp.pixelsdata.data);
+        if (bmp.pixelsdata.data != start_pixels) free(bmp.pixelsdata.data);
+
         bmp.pixelsdata.data = new_pixels;
         pixels = new_pixels;
 
         FILE * outfile = fopen(output_filename, "w");
         write_bmp(&bmp, outfile);
         printf("written\n");
+
+        if (stable_flag == 1) {
+            printf("The Game of Life is stable");
+            return 0;
+        }
+        if (empty_flag == 1) {
+            printf("The Game of Life is dead");
+            return 0;
+        }
     }
     return 0;
 }

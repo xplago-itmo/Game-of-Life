@@ -253,6 +253,16 @@ The program receives several arguments as input:
 The program gets the original image from the file whose name is passed in the parameter.
 Next, the algorithm cycles through each image pixel, counting the number of its "live" neighbors, and updates the pixel's status by updating the output image.
 
+The program terminates prematurely in case of an error:
+
+- the required parameter for launching the program was not passed, or it was passed in the wrong format;
+- pixels other than white or black are used;
+
+Also, the program will terminate prematurely:
+
+- if a stable image shape is formed ;
+- if there are no *live* pixels;
+
 ```C
 int main(int argc, char *argv[]) {
     char * input_filename = "";
