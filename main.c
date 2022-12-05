@@ -84,21 +84,25 @@ struct BMP create_bmp(unsigned int width, unsigned int height, struct PIXEL * pi
     return image;
 }
 
+struct BMP read_bmp(FILE * file) {
+    struct BITMAPFILEHEADER * bitmapfileheader = (struct BITMAPFILEHEADER *) calloc(1, 14);
+    struct BITMAPINFO * bitmapinfo = (struct BITMAPINFO *) calloc(1, 40);
+    fread(bitmapfileheader, 14, 1, file);
+    fread(bitmapinfo, 40, 1, file);
+    struct PIXEL * pixels = (struct PIXEL *) calloc(bitmapinfo->biHeight * bitmapinfo->biWidth, 3);
+    fread(pixels, 3, bitmapinfo->biHeight * bitmapinfo->biWidth, file);
+    struct PIXELSDATA pixelsdata = {pixels};
+    struct BMP bmp = {*bitmapfileheader, *bitmapinfo, pixelsdata};
+    return bmp;
+}
+
 int main() {
-    unsigned int height = 1000;
-    unsigned int width = 1000;
-    struct PIXEL * pixels = (struct PIXEL *) calloc(height * width, 3 * 24);
-    for (int i = 0; i < height * width; i++) {
-        struct PIXEL red = pixel(255, 0, 0);
-        struct PIXEL green = pixel(0, 255, 0);
-        struct PIXEL blue = pixel(0, 0, 255);
-        if (i % 3 == 0) pixels[i] = red;
-        else if (i % 3 == 1) pixels[i] = green;
-        else pixels[i] = blue;
-    }
-    struct BMP bmp = create_bmp(width, height, pixels);
-    fclose(fopen("test.bmp", "w"));
-    FILE * outfile = fopen("test.bmp", "w");
+    FILE * infile = fopen("input.bmp", "r");
+    struct BMP bmp = read_bmp(infile);
+    fclose(infile);
+
+    fclose(fopen("output.bmp", "w"));
+    FILE * outfile = fopen("output.bmp", "w");
     write_bmp(&bmp, outfile);
     return 0;
 }
