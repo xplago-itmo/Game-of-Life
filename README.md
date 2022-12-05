@@ -1,13 +1,74 @@
+
+# The Game of Life
+
+The Game of Life is a cyclical algorithm that simulates the development of digital life. The algorithm takes an image with black and white pixels as input and updates the image according to certain rules with each iteration.
+- The place of action of the game is a plane marked into cells, which can be unlimited, limited or closed.
+- Each cell on this surface has eight neighbors surrounding it, and can be in two states: to be *alive* (filled) or *dead* (empty).
+- The distribution of living cells at the beginning of the game is called the first generation. Each next generation is calculated based on the previous one according to the following rules:
+    - in an *empty* (dead) cell, which is adjacent to three *living* cells, life is born;
+    - if a *living* cell has two or three *living* neighbors, then this cell continues to live; otherwise (if there are less than two or more than three living neighbors), the cell dies (“from loneliness” or “from overcrowding”).
+- The game ends if not a single *living* cell will remain on the field;
+    - the configuration at the next step will exactly (without shifts and rotations) repeat itself at one of the earlier steps (a periodic configuration is added)
+    - at the next step, none of the cells changes its state (the previous rule applies one step back, a stable configuration is formed).
+
+## Authors
+
+- [@xplago-itmo](https://www.github.com/xplago-itmo)
+
+
+## Used libraries:
+
+```C
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+```
 
+## Used custom types:
+
+New types are used to simplify unsigned numbers:
+
+- `DWORD` - `4` byte;
+- `WORD` - `2` byte;
+- `BYTE` - `1` byte;
+
+```C
 typedef uint32_t DWORD;
 typedef uint16_t WORD;
 typedef uint8_t BYTE;
+```
 
+## BMP realization
+
+### BMP struct
+
+The BMP structure, like the .bmp file, consists of several parts:
+- `BITMAPFILEHEADER` - `12` bytes;
+- `BITMAPINFO` - `40` bytes;
+  - `PIXELSDATA` - `width * height * 3` bytes;
+
+```C
+struct BMP {
+    struct BITMAPFILEHEADER bitmapfileheader;
+    struct BITMAPINFO bitmapinfo;
+    struct PIXELSDATA pixelsdata;
+};
+```
+### BITMAPFILEHEADER struct
+
+The structure written to the beginning of the file contains the following fields:
+
+- `bfType: WORD` - `0x4D42`;
+- `bfSize: DWORD` - size of file in bytes;
+- `bfReserved1: WORD` - always `0`;
+- `bfReserved2: WORD` - always `0`;
+- `bfOffBits: DWORD` - offset of pixels data;
+
+To sequentially order fields in memory, use `pragma`.
+
+```C
 #pragma pack(push, 1)
 
 struct BITMAPFILEHEADER {
@@ -19,7 +80,34 @@ struct BITMAPFILEHEADER {
 };
 
 #pragma pack(pop)
+```
+### BITMAPINFO struct
 
+The BITMAPINFO block consists of three parts:
+
+- Structure with information fields;
+- Bit masks for extracting color channel values (not always present);
+- Color table (not always present);
+
+This 24-bit implementation lacks bit masks and a color table.
+
+The structure written to the beginning of the file contains the following fields:
+
+- `biSize: DWORD` - size of `BITMAPINFO` block in bytes - `40` ;
+- `biWidth: long` - width of image;
+- `biHeight: long` - height of image;
+- `biPlanes: WORD` - only `1` for `.bmp` files;
+- `biBitCount: WORD` - size of pixel in bits - `24` in this realization;
+- `biCompression: DWORD` - specifies how pixels are stored - `0` - `BI_RGB`;
+- `biSizeImage: DWORD` - size of pixel data in bytes;
+- `biXPelsPerMeter: long` - the number of pixels per meter horizontally;
+- `biYPelsPerMeter: long` - the number of pixels per meter vertically;
+- `biClrUsed: DWORD` - color table size in cells - `0`;
+- `biClrImportant: DWORD` - number of cells from the beginning of the color table to the last used - `0`;
+
+To sequentially order fields in memory, use `pragma`.
+
+```C
 #pragma pack(push, 1)
 
 struct BITMAPINFO {
@@ -37,7 +125,12 @@ struct BITMAPINFO {
 };
 
 #pragma pack(pop)
+```
+### PIXELSDATA struct
 
+Contains only one data field - a pointer to an array of pixels. For this, a special PIXEL structure is used, the sequence of the fields r, g, b is determined by the use of pragma.
+
+```C
 #pragma pack(push, 1)
 
 struct PIXEL {
@@ -51,7 +144,15 @@ struct PIXEL {
 struct PIXELSDATA {
     struct PIXEL * data;
 };
+```
 
+### PIXEL functions
+
+There are two functions for the PIXEL structure:
+- `pixel(r: BYTE, g: BYTE, b: BYTE): struct PIXEL` - creates a new pixel;
+- `eq_pixel(f: struct PIXEL, s: struct PIXEL): int` - checking pixels for equivalence;
+
+```C
 struct PIXEL pixel(BYTE r, BYTE g, BYTE b) {
     struct PIXEL pixel = {b, g, r};
     return pixel;
@@ -63,14 +164,15 @@ int eq_pixel(struct PIXEL f, struct PIXEL s) {
     if (f.b != s.b) return 0;
     return 1;
 }
+```
 
+### Write functions
 
-struct BMP {
-    struct BITMAPFILEHEADER bitmapfileheader;
-    struct BITMAPINFO bitmapinfo;
-    struct PIXELSDATA pixelsdata;
-};
+To write the bmp structure to a file, function `write_bmp` is used, which internally uses function `write_pixelsdata`.
+- `write_pixelsdata(image: * struct BMP, file: * FILE): void` - writes the given pixel to a file;
+- `write_bmp(image: * struct BMP, outfile: * FILE): void` - writes the given `BMP` structure to a file;
 
+```C
 void write_pixelsdata(struct BMP * image, FILE * file) {
     fwrite(image->pixelsdata.data, 3, image->bitmapinfo.biHeight * image->bitmapinfo.biWidth, file);
 }
@@ -81,7 +183,14 @@ void write_bmp(struct BMP * image, FILE * outfile) {
     write_pixelsdata(image, outfile);
     fflush(outfile);
 }
+```
 
+### Empty BMP create function
+
+Creates a new image of the given size filled with black pixels.
+- `create_bmp(width: unsigned int, height: unsigned int, pixels: * struct PIXEL): struct BMP`;
+
+```C
 struct BMP create_bmp(unsigned int width, unsigned int height, struct PIXEL * pixels) {
     unsigned int start_of_pixels = 14 + 40;
     unsigned int size = start_of_pixels + 3 * height * width;
@@ -92,7 +201,14 @@ struct BMP create_bmp(unsigned int width, unsigned int height, struct PIXEL * pi
     };
     return image;
 }
+```
 
+### Read BMP struct
+
+Returns a structure based on a file.
+- `read_bmp(file: * FILE): struct BMP`;
+
+```C
 struct BMP read_bmp(FILE * file) {
     struct BITMAPFILEHEADER * bitmapfileheader = (struct BITMAPFILEHEADER *) calloc(1, 14);
     struct BITMAPINFO * bitmapinfo = (struct BITMAPINFO *) calloc(1, 40);
@@ -104,7 +220,15 @@ struct BMP read_bmp(FILE * file) {
     struct BMP bmp = {*bitmapfileheader, *bitmapinfo, pixelsdata};
     return bmp;
 }
+```
 
+### Tool functions
+
+Functions that serve as tools for working with `BMP` files and structures:
+- `ends_with_bmp(string: * char): int` - checks the string for the ending `.bmp`;
+- `get_index(row: unsigned int, column: unsigned int, bmp: * struct BMP): unsigned int` - get pixel position in array by row and column number;
+
+```C
 int ends_with_bmp(char * string) {
     string = strrchr(string, '.');
     if( string != NULL ) return(strcmp(string, ".bmp"));
@@ -114,7 +238,22 @@ int ends_with_bmp(char * string) {
 unsigned int get_index(unsigned int row, unsigned int column, struct BMP * bmp) {
     return row * ((unsigned int) bmp->bitmapinfo.biWidth) + column;
 }
+```
 
+## The Game of Life realization
+
+The algorithm of The Game of Life is implemented in the main function.
+The program receives several arguments as input:
+
+- `--input <filename>` (required) - name of input `.bmp` file;
+- `--output <filename>` (required) - name of output `.bmp` file;
+- `--max_iter <num>` (required) - max value of game iteration;
+- `--dump_freq <num>` - time of one iteration step in seconds;
+
+The program gets the original image from the file whose name is passed in the parameter.
+Next, the algorithm cycles through each image pixel, counting the number of its "live" neighbors, and updates the pixel's status by updating the output image.
+
+```C
 int main(int argc, char *argv[]) {
     char * input_filename = "";
     char * output_filename = "";
@@ -231,3 +370,4 @@ int main(int argc, char *argv[]) {
     }
     return 0;
 }
+```
