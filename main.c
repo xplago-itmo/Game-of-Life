@@ -38,19 +38,19 @@ struct BITMAPINFO {
 
 #pragma pack(pop)
 
-#pragma pack(push, 1)
-
 struct PIXEL {
     BYTE b;
     BYTE g;
     BYTE r;
 };
 
-#pragma pack(pop)
+#pragma pack(push, 1)
 
 struct PIXELSDATA {
     struct PIXEL * data;
 };
+
+#pragma pack(pop)
 
 struct PIXEL pixel(BYTE r, BYTE g, BYTE b) {
     struct PIXEL pixel = {b, g, r};
@@ -63,7 +63,6 @@ int eq_pixel(struct PIXEL f, struct PIXEL s) {
     if (f.b != s.b) return 0;
     return 1;
 }
-
 
 struct BMP {
     struct BITMAPFILEHEADER bitmapfileheader;

@@ -128,22 +128,22 @@ struct BITMAPINFO {
 ```
 ### PIXELSDATA struct
 
-Contains only one data field - a pointer to an array of pixels. For this, a special PIXEL structure is used, the sequence of the fields r, g, b is determined by the use of pragma.
+Contains only one data field - a pointer to an array of pixels.
 
 ```C
-#pragma pack(push, 1)
-
 struct PIXEL {
     BYTE b;
     BYTE g;
     BYTE r;
 };
 
-#pragma pack(pop)
+#pragma pack(push, 1)
 
 struct PIXELSDATA {
     struct PIXEL * data;
 };
+
+#pragma pack(pop)
 ```
 
 ### PIXEL functions
