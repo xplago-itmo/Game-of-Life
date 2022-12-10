@@ -11,6 +11,10 @@ The Game of Life is a cyclical algorithm that simulates the development of digit
     - the configuration at the next step will exactly (without shifts and rotations) repeat itself at one of the earlier steps (a periodic configuration is added)
     - at the next step, none of the cells changes its state (the previous rule applies one step back, a stable configuration is formed).
 
+## GitHub
+
+- [Game of Life](https://github.com/xplago-itmo/Game-of-Life)
+
 ## Authors
 
 - [@xplago-itmo](https://www.github.com/xplago-itmo)
