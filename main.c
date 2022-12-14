@@ -71,7 +71,14 @@ struct BMP {
 };
 
 void write_pixelsdata(struct BMP * image, FILE * file) {
-    fwrite(image->pixelsdata.data, 3, image->bitmapinfo.biHeight * image->bitmapinfo.biWidth, file);
+    long mul = 3 * image->bitmapinfo.biWidth;
+    long dif = 0;
+    if (mul % 4 != 0) dif = 4 - mul % 4;
+
+    for (long i = 0; i < image->bitmapinfo.biHeight; i++) {
+        fwrite(image->pixelsdata.data + (image->bitmapinfo.biWidth * i), image->bitmapinfo.biWidth, 3, file);
+        fseek(file, dif, SEEK_CUR);
+    }
 }
 
 void write_bmp(struct BMP * image, FILE * outfile) {
@@ -97,8 +104,18 @@ struct BMP read_bmp(FILE * file) {
     struct BITMAPINFO * bitmapinfo = (struct BITMAPINFO *) calloc(1, 40);
     fread(bitmapfileheader, 14, 1, file);
     fread(bitmapinfo, 40, 1, file);
+
+    long mul = 3 * bitmapinfo->biWidth;
+    long dif = 0;
+    if (mul % 4 != 0) dif = 4 - mul % 4;
+
     struct PIXEL * pixels = (struct PIXEL *) calloc(bitmapinfo->biHeight * bitmapinfo->biWidth, 3);
-    fread(pixels, 3, bitmapinfo->biHeight * bitmapinfo->biWidth, file);
+
+    for (long i = 0; i < bitmapinfo->biHeight; i++) {
+        fread(pixels + (bitmapinfo->biWidth * i), 3, bitmapinfo->biWidth, file);
+        fseek(file, dif, SEEK_CUR);
+    }
+
     struct PIXELSDATA pixelsdata = {pixels};
     struct BMP bmp = {*bitmapfileheader, *bitmapinfo, pixelsdata};
     return bmp;
